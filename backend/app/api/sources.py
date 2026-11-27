@@ -7,6 +7,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
+from backend.app.core.key_manager import (
+    load_or_create_provenance_keys
+)
+from backend.app.core.provenance_signing import (
+    sign_provenance,
+    verify_provenance_signature
+)
 from backend.app.models.evidence_db import EvidenceDB
 from backend.app.models.source_db import (
     EvidenceSourceDB,
@@ -228,8 +235,24 @@ def register_provenance(
         collected_at=datetime.now(
             timezone.utc
         ).isoformat(),
-        transfer_details=request.transfer_details
+        transfer_details=request.transfer_details,
+        signature_algorithm="Ed25519"
     )
+
+    # Load the persistent platform signing keys.
+    private_key, public_key = (
+        load_or_create_provenance_keys()
+    )
+
+    # Sign the canonical provenance metadata.
+    provenance.signature = sign_provenance(
+        provenance,
+        private_key
+    )
+
+    # Store the public key for verification metadata.
+    # The private key is never stored in the database.
+    provenance.public_key = public_key
 
     db.add(provenance)
     db.commit()
@@ -242,7 +265,10 @@ def register_provenance(
         "source_trust_level": source.trust_level,
         "collector_identity": provenance.collector_identity,
         "collection_method": provenance.collection_method,
-        "collected_at": provenance.collected_at
+        "collected_at": provenance.collected_at,
+        "signature_algorithm": provenance.signature_algorithm,
+        "signature_status": "SIGNED",
+        "signature": provenance.signature
     }
 
 
@@ -277,8 +303,94 @@ def get_source_provenance(
                 "collector_identity": record.collector_identity,
                 "collection_method": record.collection_method,
                 "collected_at": record.collected_at,
-                "transfer_details": record.transfer_details
+                "transfer_details": record.transfer_details,
+                "signature_algorithm": record.signature_algorithm,
+                "signature_status": (
+                    "SIGNED"
+                    if record.signature
+                    else "NOT_SIGNED"
+                )
             }
             for record in records
         ]
+    }
+
+
+@router.get(
+    "/{source_id}/provenance/{provenance_id}/verify"
+)
+def verify_provenance(
+    source_id: str,
+    provenance_id: str,
+    db: Session = Depends(get_db)
+):
+    get_source_or_404(source_id, db)
+
+    provenance = (
+        db.query(EvidenceProvenanceDB)
+        .filter(
+            EvidenceProvenanceDB.source_id == source_id,
+            EvidenceProvenanceDB.provenance_id == provenance_id
+        )
+        .first()
+    )
+
+    if provenance is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Provenance record not found"
+        )
+
+    if not provenance.signature or not provenance.public_key:
+        return {
+            "provenance_id": provenance.provenance_id,
+            "signature_status": "NOT_SIGNED",
+            "signature_valid": None,
+            "message": "This provenance record has no stored signature."
+        }
+
+    if provenance.signature_algorithm != "Ed25519":
+        return {
+            "provenance_id": provenance.provenance_id,
+            "signature_status": "UNSUPPORTED_ALGORITHM",
+            "signature_valid": False,
+            "signature_algorithm": provenance.signature_algorithm
+        }
+
+    # Use the locally protected public key as the trust anchor.
+    # Do not blindly trust a public key stored alongside the record.
+    try:
+        _, trusted_public_key = load_or_create_provenance_keys()
+    except (ValueError, RuntimeError):
+        raise HTTPException(
+            status_code=500,
+            detail="Trusted provenance key is unavailable or inconsistent"
+        )
+
+    # Detect replacement of the stored public key.
+    if provenance.public_key != trusted_public_key:
+        signature_valid = False
+    else:
+        signature_valid = verify_provenance_signature(
+            provenance,
+            provenance.signature,
+            trusted_public_key
+        )
+
+    return {
+        "provenance_id": provenance.provenance_id,
+        "evidence_id": provenance.evidence_id,
+        "source_id": provenance.source_id,
+        "signature_algorithm": provenance.signature_algorithm,
+        "signature_status": (
+            "VERIFIED"
+            if signature_valid
+            else "SIGNATURE_INVALID"
+        ),
+        "signature_valid": signature_valid,
+        "message": (
+            "The provenance signature is valid."
+            if signature_valid
+            else "The provenance signature or signed metadata is invalid."
+        )
     }
