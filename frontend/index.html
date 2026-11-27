@@ -1,0 +1,364 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGIS-X | Security Intelligence Platform</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">A</div>
+            <div>
+                <h2>AEGIS-X</h2>
+                <span>Security Intelligence</span>
+            </div>
+        </div>
+
+        <nav>
+            <a class="active" href="#overview">◈ Overview</a>
+            <a href="#evidence">▤ Evidence Monitor</a>
+            <a href="#integrity">◇ Integrity Monitor</a>
+            <a href="#incidents">⚠ Incident Intelligence</a>
+            <a href="#relationshipGraphSection">⌘ Evidence Graph</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <span class="status-dot"></span>
+            API Connection
+            <strong id="connectionStatus">Checking...</strong>
+        </div>
+    </aside>
+
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">SECURITY OPERATIONS CENTER</p>
+                <h1>Security Intelligence Dashboard</h1>
+                <p class="subtitle">
+                    Unified evidence and incident monitoring
+                </p>
+            </div>
+
+            <button class="refresh-button" id="refreshButton">
+                ↻ Refresh Data
+            </button>
+        </header>
+
+
+        <!-- SYSTEM OVERVIEW -->
+        <section id="overview">
+            <div class="section-heading">
+                <h2>System Overview</h2>
+                <span>LIVE API DATA</span>
+            </div>
+
+            <div class="stats-grid">
+
+                <article class="stat-card">
+                    <p>Total Evidence</p>
+                    <h2 id="totalEvidence">--</h2>
+                    <span>Stored records</span>
+                </article>
+
+                <article class="stat-card">
+                    <p>Verified Evidence</p>
+                    <h2 id="verifiedEvidence">--</h2>
+                    <span>Integrity checks passed</span>
+                </article>
+
+                <article class="stat-card">
+                    <p>Integrity Failures</p>
+                    <h2 id="failedEvidence">--</h2>
+                    <span>Records requiring review</span>
+                </article>
+
+                <article class="stat-card">
+                    <p>Backend Status</p>
+                    <h2 class="status-text" id="investigationStatus">
+                        Checking...
+                    </h2>
+                    <span>API availability</span>
+                </article>
+
+            </div>
+        </section>
+
+
+        <!-- EVIDENCE MONITOR -->
+        <section id="evidence" class="content-section">
+
+            <div class="section-heading">
+                <h2>Evidence Monitor</h2>
+                <span>SHA-256 RECORDS</span>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Evidence ID</th>
+                            <th>Identity</th>
+                            <th>Action</th>
+                            <th>Authorization</th>
+                            <th>Execution</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="evidenceTable">
+                        <tr>
+                            <td colspan="6">Loading evidence...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="table-hint">
+                Click an evidence record to inspect its details.
+            </p>
+        </section>
+
+
+        <!-- EVIDENCE DETAILS -->
+        <section id="evidenceDetails" class="content-section" hidden>
+
+            <div class="section-heading">
+                <h2>Evidence Investigation Details</h2>
+                <span>FORENSIC VIEW</span>
+            </div>
+
+            <div class="incident-panel">
+
+                <div class="details-header">
+                    <h3>Evidence Record</h3>
+
+                    <button class="secondary-button" id="closeDetailsButton">
+                        Close Details
+                    </button>
+                </div>
+
+                <div id="evidenceDetailsContent">
+                    Select an evidence record.
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- INTEGRITY MONITOR -->
+        <section id="integrity" class="content-section">
+
+            <div class="section-heading">
+                <h2>Integrity Monitor</h2>
+                <span>RECORD VERIFICATION</span>
+            </div>
+
+            <div id="integrityResults" class="integrity-list">
+                Loading integrity results...
+            </div>
+        </section>
+
+
+        <!-- INCIDENT INTELLIGENCE -->
+        <section id="incidents" class="content-section">
+
+            <div class="section-heading">
+                <h2>Incident Intelligence</h2>
+                <span>ID2E-CHECK</span>
+            </div>
+
+            <div class="stats-grid severity-grid">
+
+                <article class="stat-card severity-high">
+                    <p>HIGH Findings</p>
+                    <h2 id="highCount">0</h2>
+                    <span>High severity findings</span>
+                </article>
+
+                <article class="stat-card severity-medium">
+                    <p>MEDIUM Findings</p>
+                    <h2 id="mediumCount">0</h2>
+                    <span>Medium severity findings</span>
+                </article>
+
+                <article class="stat-card severity-low">
+                    <p>LOW Findings</p>
+                    <h2 id="lowCount">0</h2>
+                    <span>Low severity findings</span>
+                </article>
+
+                <article class="stat-card">
+                    <p>Investigation Status</p>
+                    <h2 class="status-text" id="incidentStatus">
+                        Not Run
+                    </h2>
+                    <span>Latest reconstruction</span>
+                </article>
+
+            </div>
+
+
+            <div class="incident-panel">
+
+                <h3>Incident Reconstruction</h3>
+
+                <p>
+                    Run a synthetic investigation to identify
+                    authorization and execution inconsistencies.
+                </p>
+
+                <button class="refresh-button" id="incidentTestButton">
+                    Run Test Investigation
+                </button>
+
+                <div id="incidentMessage" class="message">
+                    No investigation run yet.
+                </div>
+
+            </div>
+
+
+            <!-- FINDINGS -->
+            <div class="content-section">
+
+                <div class="section-heading">
+                    <h2>Incident Findings</h2>
+                    <span>DETECTION RESULTS</span>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Severity</th>
+                                <th>Finding Type</th>
+                                <th>Evidence ID</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="findingsTable">
+                            <tr>
+                                <td colspan="4">
+                                    No investigation results yet.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+
+            <!-- EVIDENCE RELATIONSHIP GRAPH -->
+            <div class="content-section" id="relationshipGraphSection">
+
+                <div class="section-heading">
+                    <h2>Evidence Relationship Graph</h2>
+                    <span>ID2E VISUALIZATION</span>
+                </div>
+
+                <div class="incident-panel">
+
+                    <p>
+                        Visual representation of identity-to-effect
+                        relationships from the latest incident reconstruction.
+                    </p>
+
+                    <div class="graph-legend">
+                        <span><i class="legend-dot identity-dot"></i> Identity</span>
+                        <span><i class="legend-dot authorization-dot"></i> Authorization</span>
+                        <span><i class="legend-dot action-dot"></i> Action</span>
+                        <span><i class="legend-dot execution-dot"></i> Execution</span>
+                        <span><i class="legend-dot effect-dot"></i> Effect</span>
+                        <span><i class="legend-dot finding-dot"></i> Finding</span>
+                    </div>
+
+                    <div id="relationshipGraph" class="relationship-graph">
+                        <p class="graph-empty">
+                            Run an incident investigation to generate the graph.
+                        </p>
+                    </div>
+
+                    <div id="graphNodeDetails" class="graph-node-details">
+                        Select a graph node to inspect its details.
+                    </div>
+
+                </div>
+            </div>
+
+
+            <!-- TIMELINE -->
+            <div class="content-section">
+
+                <div class="section-heading">
+                    <h2>Investigation Timeline</h2>
+                    <span>CHRONOLOGICAL EVENTS</span>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Sequence</th>
+                                <th>Timestamp</th>
+                                <th>Identity</th>
+                                <th>Action</th>
+                                <th>Authorization</th>
+                                <th>Execution</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="timelineTable">
+                            <tr>
+                                <td colspan="6">
+                                    No timeline available.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+
+            <!-- RAW REPORT -->
+            <div class="content-section">
+
+                <div class="section-heading">
+                    <h2>Investigation Report</h2>
+                    <span>API RESPONSE</span>
+                </div>
+
+                <div class="incident-panel">
+                    <pre id="incidentResults">No investigation run yet.</pre>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <footer>
+            <span>
+                AEGIS-X · Unified AI Cybersecurity Intelligence Platform
+            </span>
+
+            <span>
+                Research prototype · Local environment
+            </span>
+        </footer>
+
+    </main>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
