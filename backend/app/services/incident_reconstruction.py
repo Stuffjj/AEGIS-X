@@ -1,10 +1,16 @@
 
+from typing import Any
+
 from backend.app.models.evidence import EvidenceRecord
+from backend.app.services.correlation_analysis import (
+    analyze_correlations,
+)
 
 
 def reconstruct_incident(
     records: list[EvidenceRecord],
-    integrity_results: dict[str, bool] | None = None
+    integrity_results: dict[str, bool] | None = None,
+    correlation_metadata: list[Any] | None = None,
 ) -> dict:
     """
     Reconstruct a chronological incident timeline.
@@ -12,8 +18,9 @@ def reconstruct_incident(
     Detects:
     - Authorization and execution contradictions.
     - Unknown authorization.
-    - Evidence integrity failures when integrity results
-      are supplied by the storage verification service.
+    - Evidence integrity failures.
+    - Correlation group identity variations.
+    - Parent-event references outside the analysis set.
     """
 
     if not records:
@@ -21,10 +28,9 @@ def reconstruct_incident(
             "total_events": 0,
             "timeline": [],
             "findings": [],
-            "status": "NO_EVIDENCE"
+            "status": "NO_EVIDENCE",
         }
 
-    # Validate timestamps before sorting.
     for record in records:
         if (
             record.timestamp.tzinfo is None
@@ -34,10 +40,9 @@ def reconstruct_incident(
                 "All evidence timestamps must include a timezone"
             )
 
-    # Sort chronologically without modifying original records.
     sorted_records = sorted(
         records,
-        key=lambda record: record.timestamp
+        key=lambda record: record.timestamp,
     )
 
     timeline = []
@@ -55,13 +60,19 @@ def reconstruct_incident(
             "authorization_status": record.authorization_status,
             "execution_status": record.execution_status,
             "observed_effect": record.observed_effect,
-            "source": record.source
+            "source": record.source,
         }
 
-        # --------------------------------------------------
-        # EVIDENCE INTEGRITY VERIFICATION
-        # --------------------------------------------------
+        # Normalize status values to avoid case-sensitivity issues.
+        authorization_status = (
+            record.authorization_status.strip().lower()
+        )
 
+        execution_status = (
+            record.execution_status.strip().lower()
+        )
+
+        # Evidence integrity verification.
         if integrity_results is not None:
 
             integrity_valid = integrity_results.get(
@@ -78,7 +89,7 @@ def reconstruct_incident(
                     "finding": "EVIDENCE_INTEGRITY_NOT_VERIFIED",
                     "description": (
                         "Evidence integrity could not be verified."
-                    )
+                    ),
                 })
 
             elif integrity_valid is False:
@@ -94,7 +105,7 @@ def reconstruct_incident(
                         "its stored SHA-256 hash. The evidence may "
                         "have been modified after its original hash "
                         "was generated."
-                    )
+                    ),
                 })
 
             else:
@@ -103,13 +114,10 @@ def reconstruct_incident(
 
         timeline.append(event)
 
-        # --------------------------------------------------
-        # AUTHORIZATION AND EXECUTION CONTRADICTION
-        # --------------------------------------------------
-
+        # Authorization and execution contradiction.
         if (
-            record.authorization_status == "denied"
-            and record.execution_status == "success"
+            authorization_status == "denied"
+            and execution_status == "success"
         ):
             findings.append({
                 "evidence_id": record.evidence_id,
@@ -118,24 +126,21 @@ def reconstruct_incident(
                 "description": (
                     "Action was marked as denied but execution "
                     "was recorded as successful."
-                )
+                ),
             })
 
-        # --------------------------------------------------
-        # UNKNOWN AUTHORIZATION
-        # --------------------------------------------------
-
-        if record.authorization_status == "unknown":
+        # Unknown authorization.
+        if authorization_status == "unknown":
             findings.append({
                 "evidence_id": record.evidence_id,
                 "severity": "MEDIUM",
                 "finding": "UNKNOWN_AUTHORIZATION",
                 "description": (
                     "Authorization status could not be established."
-                )
+                ),
             })
 
-    return {
+    result = {
         "total_events": len(timeline),
         "timeline": timeline,
         "findings": findings,
@@ -143,5 +148,22 @@ def reconstruct_incident(
             "REQUIRES_INVESTIGATION"
             if findings
             else "NO_INCONSISTENCIES_DETECTED"
-        )
+        ),
     }
+
+    # ID2E-CHECK correlation analysis.
+    if correlation_metadata is not None:
+
+        correlation_result = analyze_correlations(
+            sorted_records,
+            correlation_metadata,
+        )
+
+        result["correlation_analysis"] = correlation_result
+
+        findings.extend(correlation_result["findings"])
+
+        if findings:
+            result["status"] = "REQUIRES_INVESTIGATION"
+
+    return result

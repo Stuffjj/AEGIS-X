@@ -6,7 +6,7 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parents[1] / "aegis_x.db"
 
-ORIGINAL_ID = "978d45d0-8ca7-4b6d-8da6-7733c0a9a15e"
+ORIGINAL_ID = "ef07fce2-9dc8-427a-a86e-02673981cd4d"
 
 
 def create_tampered_copy():

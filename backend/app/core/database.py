@@ -26,18 +26,24 @@ class Base(DeclarativeBase):
 
 
 def create_tables():
-    # Register existing database models.
+    # Evidence model
     from backend.app.models.evidence_db import EvidenceDB
 
+    # Incident models
     from backend.app.models.incident_db import (
         IncidentDB,
         IncidentEvidenceDB
     )
 
-    # Register ID2E-SOURCE models.
+    # Evidence source and provenance models
     from backend.app.models.source_db import (
         EvidenceSourceDB,
         EvidenceProvenanceDB
+    )
+
+    # ID2E-CHECK correlation model
+    from backend.app.models.correlation_db import (
+        EvidenceCorrelationDB
     )
 
     Base.metadata.create_all(bind=engine)

@@ -9,7 +9,7 @@ from backend.app.core.database import create_tables
 from backend.app.api.evidence import router as evidence_router
 from backend.app.api.incidents import router as incidents_router
 from backend.app.api.sources import router as sources_router
-
+from backend.app.api.correlations import router as correlations_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,6 +40,7 @@ app.add_middleware(
 app.include_router(evidence_router)
 app.include_router(incidents_router)
 app.include_router(sources_router)
+app.include_router(correlations_router)
 
 
 @app.get("/")

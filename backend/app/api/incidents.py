@@ -14,6 +14,7 @@ from backend.app.models.incident_db import (
     IncidentDB,
     IncidentEvidenceDB
 )
+from backend.app.models.correlation_db import EvidenceCorrelationDB
 
 from backend.app.services.evidence_storage import (
     verify_stored_evidence
@@ -135,6 +136,34 @@ def get_incident_records(
             )
 
     return records
+
+
+def get_incident_correlations(
+    records: list[EvidenceRecord],
+    db: Session
+):
+    """
+    Retrieve correlation metadata only for evidence
+    records belonging to the current incident.
+    """
+
+    evidence_ids = [
+        record.evidence_id
+        for record in records
+    ]
+
+    if not evidence_ids:
+        return []
+
+    return (
+        db.query(EvidenceCorrelationDB)
+        .filter(
+            EvidenceCorrelationDB.evidence_id.in_(
+                evidence_ids
+            )
+        )
+        .all()
+    )
 
 
 # --------------------------------------------------
@@ -397,7 +426,8 @@ def get_session_evidence(
 
 
 # --------------------------------------------------
-# INTEGRITY-AWARE STORED INCIDENT RECONSTRUCTION
+# INTEGRITY AND CORRELATION-AWARE
+# STORED INCIDENT RECONSTRUCTION
 # --------------------------------------------------
 
 @router.post("/{incident_id}/reconstruct")
@@ -418,7 +448,7 @@ def reconstruct_stored_incident(
 
     try:
 
-        # Verify every stored evidence record.
+        # STEP 1: Verify every stored evidence record.
         integrity_results = {}
 
         for record in records:
@@ -429,12 +459,22 @@ def reconstruct_stored_incident(
                 )
             )
 
-        # Reconstruct timeline with integrity findings.
-        result = reconstruct_incident(
+        # STEP 2: Retrieve correlation metadata
+        # belonging to this incident's evidence.
+        correlation_metadata = get_incident_correlations(
             records,
-            integrity_results=integrity_results
+            db
         )
 
+        # STEP 3: Reconstruct timeline, verify integrity,
+        # and analyze evidence correlations.
+        result = reconstruct_incident(
+            records,
+            integrity_results=integrity_results,
+            correlation_metadata=correlation_metadata
+        )
+
+        # STEP 4: Return the complete investigation report.
         return {
             "project": "AEGIS-X",
             "module": "ID2E-CHECK",
